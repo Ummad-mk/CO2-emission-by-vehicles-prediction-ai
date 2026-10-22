@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CO2 Emission Predictor | AI-Powered Vehicle Analysis</title>
+  <meta name="description" content="Predict vehicle CO2 emissions using machine learning. Powered by 5 ML algorithms evaluated on 7,385 Canadian vehicle records." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
+</head>
+<body>
+  <!-- ── Background particles ── -->
+  <div class="bg-particles" id="particles"></div>
+
+  <!-- ── Header ── -->
+  <header class="header">
+    <div class="header-inner">
+      <div class="logo">
+        <span class="logo-icon">🚗</span>
+        <div>
+          <div class="logo-title">CO₂ Emission Predictor</div>
+          <div class="logo-sub">AI-Powered Vehicle Analysis</div>
+        </div>
+      </div>
+      <div class="header-badges">
+        <span class="badge badge-ml">ML Model: <strong id="model-name">{{ model_name }}</strong></span>
+        <span class="badge badge-data">7,385 Vehicles · 10-Fold CV</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- ── Hero ── -->
+  <section class="hero">
+    <div class="hero-content">
+      <h1 class="hero-title">Predict Vehicle CO₂ Emissions</h1>
+      <p class="hero-subtitle">
+        Enter vehicle specifications below to get an instant AI-powered CO₂ emission estimate.
+        Trained on 7,385 Canadian vehicle records using 5 machine learning algorithms.
+      </p>
+      <div class="hero-stats">
+        <div class="stat-card">
+          <div class="stat-val">7,385</div>
+          <div class="stat-label">Training Records</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-val">5</div>
+          <div class="stat-label">ML Algorithms</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-val">10-Fold</div>
+          <div class="stat-label">Cross-Validation</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-val">RMSE</div>
+          <div class="stat-label">Evaluation Metric</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Main Content ── -->
+  <main class="main-content">
+    <div class="grid">
+
+      <!-- ── Input Form ── -->
+      <div class="card form-card">
+        <div class="card-header">
+          <span class="card-icon">⚙️</span>
+          <h2>Vehicle Specifications</h2>
+        </div>
+
+        <form id="prediction-form">
+          <div class="form-grid">
+
+            <!-- Engine Size -->
+            <div class="form-group">
+              <label for="engine_size">Engine Size (L)</label>
+              <div class="input-wrap">
+                <input type="number" id="engine_size" name="engine_size"
+                       value="2.0" min="0.5" max="8.0" step="0.1"
+                       class="form-input" />
+                <span class="input-icon">🔧</span>
+              </div>
+            </div>
+
+            <!-- Cylinders -->
+            <div class="form-group">
+              <label for="cylinders">Cylinders</label>
+              <div class="input-wrap">
+                <select id="cylinders" name="cylinders" class="form-input">
+                  <option value="3">3 Cylinders</option>
+                  <option value="4" selected>4 Cylinders</option>
+                  <option value="5">5 Cylinders</option>
+                  <option value="6">6 Cylinders</option>
+                  <option value="8">8 Cylinders</option>
+                  <option value="10">10 Cylinders</option>
+                  <option value="12">12 Cylinders</option>
+                </select>
+                <span class="input-icon">🔩</span>
+              </div>
+            </div>
+
+            <!-- Vehicle Class -->
+            <div class="form-group full-width">
+              <label for="vehicle_class">Vehicle Class</label>
+              <div class="input-wrap">
+                <select id="vehicle_class" name="vehicle_class" class="form-input">
+                  {% for vc in vehicle_classes %}
+                  <option value="{{ vc }}" {% if vc == 'COMPACT' %}selected{% endif %}>{{ vc }}</option>
+                  {% endfor %}
+                </select>
+                <span class="input-icon">🚙</span>
+              </div>
+            </div>
+
+            <!-- Transmission -->
+            <div class="form-group">
+              <label for="transmission">Transmission</label>
+              <div class="input-wrap">
+                <select id="transmission" name="transmission" class="form-input">
+                  {% for tr in transmissions %}
+                  <option value="{{ tr }}" {% if tr == 'AS6' %}selected{% endif %}>{{ tr }}</option>
+                  {% endfor %}
+                </select>
+                <span class="input-icon">⚡</span>
+              </div>
+            </div>
+
+            <!-- Fuel Type -->
+            <div class="form-group">
+              <label for="fuel_type">Fuel Type</label>
+              <div class="input-wrap">
+                <select id="fuel_type" name="fuel_type" class="form-input">
+                  {% for code, name in fuel_types.items() %}
+                  <option value="{{ code }}" {% if code == 'X' %}selected{% endif %}>{{ name }}</option>
+                  {% endfor %}
+                </select>
+                <span class="input-icon">⛽</span>
+              </div>
+            </div>
+
+            <!-- Fuel City -->
+            <div class="form-group">
+              <label for="fuel_city">City Fuel (L/100km)</label>
+              <div class="input-wrap">
+                <input type="number" id="fuel_city" name="fuel_city"
+                       value="10.0" min="1" max="30" step="0.1" class="form-input" />
+                <span class="input-icon">🏙️</span>
+              </div>
+            </div>
+
+            <!-- Fuel Hwy -->
+            <div class="form-group">
+              <label for="fuel_hwy">Hwy Fuel (L/100km)</label>
+              <div class="input-wrap">
+                <input type="number" id="fuel_hwy" name="fuel_hwy"
+                       value="7.5" min="1" max="25" step="0.1" class="form-input" />
+                <span class="input-icon">🛣️</span>
+              </div>
+            </div>
+
+            <!-- Fuel Comb -->
+            <div class="form-group">
+              <label for="fuel_comb">Combined Fuel (L/100km)</label>
+              <div class="input-wrap">
+                <input type="number" id="fuel_comb" name="fuel_comb"
+                       value="9.0" min="1" max="28" step="0.1" class="form-input" />
+                <span class="input-icon">🔄</span>
+              </div>
+            </div>
+
+            <!-- Fuel Comb MPG -->
+            <div class="form-group">
+              <label for="fuel_comb_mpg">Combined Fuel (mpg)</label>
+              <div class="input-wrap">
+                <input type="number" id="fuel_comb_mpg" name="fuel_comb_mpg"
+                       value="31" min="5" max="100" step="1" class="form-input" />
+                <span class="input-icon">📏</span>
+              </div>
+            </div>
+
+          </div><!-- /form-grid -->
+
+          <button type="submit" class="predict-btn" id="predict-btn">
+            <span id="btn-text">🔮 Predict CO₂ Emission</span>
+            <div id="btn-spinner" class="spinner hidden"></div>
+          </button>
+        </form>
+      </div>
+
+      <!-- ── Result Panel ── -->
+      <div class="card result-card" id="result-section">
+        <div class="card-header">
+          <span class="card-icon">📊</span>
+          <h2>Prediction Result</h2>
+        </div>
+
+        <!-- Idle State -->
+        <div class="idle-state" id="idle-state">
+          <div class="idle-icon">🌿</div>
+          <p>Fill in the vehicle specs and click <strong>Predict</strong> to see the CO₂ emission estimate.</p>
+        </div>
+
+        <!-- Result Display -->
+        <div class="result-display hidden" id="result-display">
+          <div class="co2-gauge" id="co2-gauge">
+            <div class="gauge-value" id="gauge-value">—</div>
+            <div class="gauge-unit">g/km CO₂</div>
+          </div>
+
+          <div class="category-badge" id="category-badge">—</div>
+
+          <div class="result-meta">
+            <div class="meta-row">
+              <span class="meta-label">Model Used</span>
+              <span class="meta-val" id="res-model">—</span>
+            </div>
+            <div class="meta-row">
+              <span class="meta-label">Emission Level</span>
+              <span class="meta-val" id="res-category">—</span>
+            </div>
+          </div>
+
+          <div class="emission-scale">
+            <div class="scale-title">Emission Scale (g/km)</div>
+            <div class="scale-bar">
+              <div class="scale-seg seg-1">Very Low<br/>&lt;120</div>
+              <div class="scale-seg seg-2">Low<br/>120–170</div>
+              <div class="scale-seg seg-3">Moderate<br/>170–230</div>
+              <div class="scale-seg seg-4">High<br/>230–280</div>
+              <div class="scale-seg seg-5">Very High<br/>&gt;280</div>
+            </div>
+            <div class="scale-indicator-wrap">
+              <div class="scale-indicator" id="scale-indicator"></div>
+            </div>
+          </div>
+
+          <div class="tips-box" id="tips-box"></div>
+        </div>
+
+        <!-- Error Display -->
+        <div class="error-display hidden" id="error-display">
+          <div class="error-icon">⚠️</div>
+          <p id="error-msg">An error occurred.</p>
+        </div>
+      </div>
+
+    </div><!-- /grid -->
+
+    <!-- ── Algorithm Comparison Table ── -->
+    <div class="card algo-card">
+      <div class="card-header">
+        <span class="card-icon">🤖</span>
+        <h2>ML Algorithms Compared</h2>
+        <span class="header-note">10-Fold Cross-Validation · Full Dataset · RMSE Metric</span>
+      </div>
+      <div class="table-wrap">
+        <table class="algo-table">
+          <thead>
+            <tr>
+              <th>Rank</th>
+              <th>Algorithm</th>
+              <th>Category</th>
+              <th>Key Config</th>
+              <th>Note</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr class="best-row">
+              <td>🥇 1</td>
+              <td><strong>XGBoost Regressor</strong></td>
+              <td><span class="tag tag-boost">Boosting</span></td>
+              <td>n_est=200, lr=0.05, depth=6</td>
+              <td>Typically best performer</td>
+            </tr>
+            <tr>
+              <td>🥈 2</td>
+              <td><strong>Extra Trees Regressor</strong></td>
+              <td><span class="tag tag-ensemble">Ensemble</span></td>
+              <td>n_est=200, max_features=sqrt</td>
+              <td>Fast & robust</td>
+            </tr>
+            <tr>
+              <td>🥉 3</td>
+              <td><strong>SVR (RBF Kernel)</strong></td>
+              <td><span class="tag tag-kernel">Kernel</span></td>
+              <td>C=100, epsilon=0.1</td>
+              <td>Strong on scaled data</td>
+            </tr>
+            <tr>
+              <td>4</td>
+              <td><strong>Ridge Regression</strong></td>
+              <td><span class="tag tag-linear">Linear</span></td>
+              <td>alpha=1.0, L2 reg.</td>
+              <td>Baseline regularized</td>
+            </tr>
+            <tr>
+              <td>5</td>
+              <td><strong>Lasso Regression</strong></td>
+              <td><span class="tag tag-linear">Linear</span></td>
+              <td>alpha=0.01, L1 reg.</td>
+              <td>Feature selection</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="algo-note">
+        ℹ️ These algorithms are distinct from those in the Car Price Prediction System
+        (Linear Regression, KNN, Decision Tree, Random Forest, Gradient Boosting).
+      </p>
+    </div>
+
+  </main>
+
+  <!-- ── Footer ── -->
+  <footer class="footer">
+    <p>AIC354 — Machine Learning Fundamentals | Assignment 3 · CO2 Emission Prediction System</p>
+    <p>Dataset: Government of Canada · 7,385 vehicle records · 10-Fold Cross-Validation</p>
+  </footer>
+
+  <script>
+    // ── Particle background ────────────────────────────────────────────────────
+    (function() {
+      const container = document.getElementById('particles');
+      for (let i = 0; i < 30; i++) {
+        const p = document.createElement('div');
+        p.className = 'particle';
+        p.style.cssText = `
+          left: ${Math.random() * 100}%;
+          top: ${Math.random() * 100}%;
+          width: ${Math.random() * 6 + 2}px;
+          height: ${Math.random() * 6 + 2}px;
+          animation-delay: ${Math.random() * 8}s;
+          animation-duration: ${Math.random() * 6 + 6}s;
+        `;
+        container.appendChild(p);
+      }
+    })();
+
+    // ── Form submission ────────────────────────────────────────────────────────
+    document.getElementById('prediction-form').addEventListener('submit', async function(e) {
+      e.preventDefault();
+
+      const btn     = document.getElementById('predict-btn');
+      const btnText = document.getElementById('btn-text');
+      const spinner = document.getElementById('btn-spinner');
+
+      // Loading state
+      btn.disabled = true;
+      btnText.textContent = 'Predicting...';
+      spinner.classList.remove('hidden');
+      document.getElementById('idle-state').classList.add('hidden');
+      document.getElementById('result-display').classList.add('hidden');
+      document.getElementById('error-display').classList.add('hidden');
+
+      const payload = {
+        engine_size   : parseFloat(document.getElementById('engine_size').value),
+        cylinders     : parseInt(document.getElementById('cylinders').value),
+        vehicle_class : document.getElementById('vehicle_class').value,
+        transmission  : document.getElementById('transmission').value,
+        fuel_type     : document.getElementById('fuel_type').value,
+        fuel_city     : parseFloat(document.getElementById('fuel_city').value),
+        fuel_hwy      : parseFloat(document.getElementById('fuel_hwy').value),
+        fuel_comb     : parseFloat(document.getElementById('fuel_comb').value),
+        fuel_comb_mpg : parseInt(document.getElementById('fuel_comb_mpg').value),
+      };
+
+      try {
+        const resp = await fetch('/predict', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+
+        const data = await resp.json();
+
+        if (data.error) {
+          showError(data.error);
+        } else {
+          showResult(data);
+        }
+      } catch (err) {
+        showError('Network error. Please check your connection.');
+      } finally {
+        btn.disabled = false;
+        btnText.textContent = '🔮 Predict CO₂ Emission';
+        spinner.classList.add('hidden');
+      }
+    });
+
+    function showResult(data) {
+      const display = document.getElementById('result-display');
+      display.classList.remove('hidden');
+
+      // Animate value
+      const gaugeEl = document.getElementById('gauge-value');
+      const target  = data.prediction;
+      let current   = 0;
+      const step    = target / 40;
+      const interval = setInterval(() => {
+        current = Math.min(current + step, target);
+        gaugeEl.textContent = current.toFixed(1);
+        if (current >= target) clearInterval(interval);
+      }, 25);
+
+      // Color gauge
+      const gauge = document.getElementById('co2-gauge');
+      gauge.style.borderColor = data.color;
+      gauge.style.boxShadow   = `0 0 40px ${data.color}55`;
+
+      // Category
+      const catBadge = document.getElementById('category-badge');
+      catBadge.textContent    = data.category;
+      catBadge.style.background = data.color + '22';
+      catBadge.style.borderColor = data.color;
+      catBadge.style.color      = data.color;
+
+      document.getElementById('res-model').textContent    = data.model_used;
+      document.getElementById('res-category').textContent = data.category;
+
+      // Scale indicator
+      const val = data.prediction;
+      const maxScale = 350;
+      const pct = Math.min(val / maxScale * 100, 100);
+      const ind = document.getElementById('scale-indicator');
+      ind.style.left  = `${pct}%`;
+      ind.style.background = data.color;
+
+      // Tips
+      const tips = getTip(data.prediction);
+      document.getElementById('tips-box').innerHTML = tips;
+    }
+
+    function getTip(val) {
+      if (val < 120) return '<div class="tip tip-green">🌿 <strong>Excellent!</strong> This vehicle has very low emissions. Great choice for the environment.</div>';
+      if (val < 170) return '<div class="tip tip-yellow">✅ <strong>Good.</strong> Below average emissions. Consider hybrid options for further reduction.</div>';
+      if (val < 230) return '<div class="tip tip-orange">⚠️ <strong>Moderate.</strong> Average range. Look for fuel-efficient alternatives or reduce city driving.</div>';
+      if (val < 280) return '<div class="tip tip-red">🔴 <strong>High Emissions.</strong> Consider a smaller engine or hybrid/EV alternative.</div>';
+      return '<div class="tip tip-darkred">⛔ <strong>Very High Emissions.</strong> This vehicle significantly impacts air quality. Consider electric alternatives.</div>';
+    }
+
+    function showError(msg) {
+      const errorEl = document.getElementById('error-display');
+      document.getElementById('error-msg').textContent = msg;
+      errorEl.classList.remove('hidden');
+    }
+  </script>
+</body>
+</html>
