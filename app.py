@@ -6,6 +6,9 @@ Deploy: https://streamlit.io/cloud → connect this GitHub repo → set app.py a
 
 import os
 import pickle
+import warnings
+warnings.filterwarnings('ignore')
+
 import numpy as np
 import pandas as pd
 import streamlit as st
@@ -239,7 +242,12 @@ with tab1:
 
             X_input = np.array([[vc_enc, engine_size, cylinders, tr_enc, ft_enc,
                                   fuel_city, fuel_hwy, fuel_comb, fuel_comb_mpg]])
-            prediction = max(0, float(model.predict(X_input)[0]))
+            features = model_bundle.get('features', None)
+            if features is not None:
+                X_pred = pd.DataFrame(X_input, columns=features)
+                prediction = max(0, float(model.predict(X_pred)[0]))
+            else:
+                prediction = max(0, float(model.predict(X_input)[0]))
 
             # Emission category
             if prediction < 120:
