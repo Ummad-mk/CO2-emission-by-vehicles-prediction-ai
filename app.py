@@ -113,11 +113,15 @@ FUEL_TYPES = {
 
 # ── Load Model ─────────────────────────────────────────────────────────────────
 @st.cache_resource
+def _read_pickle(path, mtime):
+    with open(path, 'rb') as f:
+        return pickle.load(f)
+
 def load_model():
     model_path = os.path.join(os.path.dirname(__file__), 'models', 'best_model.pkl')
     if os.path.exists(model_path):
-        with open(model_path, 'rb') as f:
-            return pickle.load(f)
+        mtime = os.path.getmtime(model_path)
+        return _read_pickle(model_path, mtime)
     return None
 
 model_bundle = load_model()
